@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.text.isTypedEvent
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.runtime.*
@@ -33,8 +32,10 @@ import androidx.compose.ui.unit.round
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import me.imtoggle.screenshotplus.config.ModConfig
 import me.imtoggle.screenshotplus.util.MultiImages
 import org.polyfrost.compose.render.ImageLoader
+import org.polyfrost.oneconfig.internal.ui.components.Chip
 import org.polyfrost.oneconfig.internal.ui.components.Icon
 import org.polyfrost.oneconfig.internal.ui.components.Text
 import org.polyfrost.oneconfig.internal.ui.components.onClick
@@ -47,7 +48,6 @@ import org.polyfrost.oneconfig.utils.v1.ClipboardHelper
 import org.polyfrost.oneconfig.utils.v1.dsl.mc
 import org.polyfrost.oneconfig.utils.v1.dsl.runAsync
 import org.polyfrost.oneconfig.utils.v1.dsl.schedule
-import java.awt.Toolkit
 import java.io.File
 import kotlin.math.max
 import kotlin.math.min
@@ -65,18 +65,27 @@ val dragSelected = mutableStateListOf<Int>()
 
 var currentIndex by mutableStateOf(-1)
 
+var folders = mutableStateListOf<String>()
+
 var lastSelected = 0
 
 var isCtrl = false
+
 var isShift = false
+
+var currentPath = mutableListOf(ModConfig.screenShotRootFolder)
+
+fun getPath() = File(currentPath.joinToString("/"))
 
 fun getSelected(image: ImageData) = if (selected.isEmpty()) listOf(image) else selected + image
 
 fun refreshImages(together: Boolean = false) {
     val newList = mutableListOf<ImageData>()
     if (!together) images.clear()
+    folders.clear()
     runAsync {
-        val folder = File(mc.gameDirectory, "/screenshots")
+        val folder = getPath()
+        if (!folder.exists()) return@runAsync
         folder.listFiles()?.forEach { file ->
             if (file.isFile && file.extension == "png") {
                 ImageLoader.fromFile(file.absolutePath)?.toComposeImageBitmap()?.let { bitMap ->
@@ -88,7 +97,8 @@ fun refreshImages(together: Boolean = false) {
                         }
                     }
                 }
-
+            } else if (file.isDirectory) {
+                folders.add(file.name)
             }
         }
         if (together) {
@@ -109,6 +119,7 @@ fun makeRect(start: Offset, offset: Offset, density: Float): Rect {
 fun Screenshots() {
     LaunchedEffect(Unit) {
         lastSelected = 0
+        currentPath = mutableListOf(ModConfig.screenShotRootFolder)
         refreshImages(false)
     }
     val interactionSource = rememberInteractionSource()
@@ -116,9 +127,52 @@ fun Screenshots() {
     var offset by remember { mutableStateOf(Offset.Zero) }
     val density = LocalDensity.current.density
     var dragRect by remember { mutableStateOf(makeRect(start, offset, density)) }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(19.dp),
     ) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            currentPath.forEachIndexed { index, name ->
+                if (index == 0) {
+                    Chip(
+                        label = "...",
+                        selected = true,
+                        icon = "folder",
+                        onClick = {
+                            currentPath = mutableListOf(ModConfig.screenShotRootFolder)
+                            refreshImages(false)
+                        }
+                    )
+                } else {
+                    Chip(
+                        label = name,
+                        selected = true,
+                        icon = "folder",
+                        onClick = {
+                            currentPath = currentPath.subList(0, index)
+                            println(getPath())
+                            currentPath += name
+                            println(getPath())
+                            refreshImages(false)
+                        }
+                    )
+                }
+            }
+            folders.forEach {
+                Chip(
+                    label = it,
+                    selected = false,
+                    icon = "folder",
+                    onClick = {
+                        currentPath += it
+                        refreshImages(false)
+                    }
+                )
+            }
+        }
         Box(modifier = Modifier
             .weight(1f)
             .onClick(interactionSource) {
