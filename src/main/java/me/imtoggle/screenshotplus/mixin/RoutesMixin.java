@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Mixin(value = RoutesKt.class, remap = false, priority = 900)
-public class ConfigScreenMixin {
+public class RoutesMixin {
 
     @Unique
     private static List<NavigationGroup> groups = new ArrayList<>();
@@ -25,9 +25,7 @@ public class ConfigScreenMixin {
             groups.addAll(original);
             NavigationGroup group = groups.getFirst();
             List<NavigationRoute> routes = new ArrayList<>(Arrays.stream(group.getRoutes()).toList());
-            routes.add(new NavigationRoute(
-                    "screenshots", "settings", ScreenshotsGraph.INSTANCE
-            ));
+            routes.add(new NavigationRoute("screenshots", "/assets/screenshotplus/icons/screenshot.svg", ScreenshotsGraph.INSTANCE));
             groups.set(0, new NavigationGroup(group.getId(), routes.toArray(new NavigationRoute[0])));
         }
         return groups;
