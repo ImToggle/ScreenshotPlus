@@ -1,5 +1,7 @@
 plugins {
     id("dev.kikugie.loom-back-compat")
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.0"
+    kotlin("plugin.serialization") version "2.4.0"
     kotlin("jvm")
 }
 
@@ -28,6 +30,18 @@ repositories {
     }
     strictMaven("https://www.cursemaven.com", "CurseForge", "curse.maven")
     strictMaven("https://api.modrinth.com/maven", "Modrinth", "maven.modrinth")
+    maven("https://repo.polyfrost.org/releases")
+    maven("https://repo.polyfrost.org/snapshots")
+//    maven("https://redirector.kotlinlang.org/maven/compose-dev")
+    maven("https://central.sonatype.com/repository/maven-snapshots/") {
+        content { includeGroup("net.kyori") }
+    }
+    maven("https://maven.gnomecraft.net/releases/") {
+        content {
+            includeGroup("com.terraformersmc")
+        }
+    }
+    google()
     mavenCentral()
 }
 
@@ -42,7 +56,25 @@ dependencies {
 
     modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:1.13.12+kotlin.2.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     fapi("fabric-lifecycle-events-v1", "fabric-resource-loader-v0", "fabric-content-registries-v0", "fabric-registry-sync-v0")
+
+    val oneconfigversion = "1.0.6"
+
+    listOf(
+        "commands",
+        "config",
+        "config-impl",
+        "events",
+        "internal",
+        "ui",
+        "utils",
+        "hud"
+    ).forEach { module ->
+        modImplementation("org.polyfrost.oneconfig:${module}:$oneconfigversion")
+    }
+
+    modImplementation("org.polyfrost.oneconfig:${sc.current.version}-fabric:$oneconfigversion")
 }
 
 loom {

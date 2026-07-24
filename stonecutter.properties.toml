@@ -1,5 +1,5 @@
-mod.id = "template"
-mod.name = "Template"
+mod.id = "screenshotplus"
+mod.name = "Screenshot+"
 mod.group = "me.imtoggle"
 mod.version = "0.1.0"
 

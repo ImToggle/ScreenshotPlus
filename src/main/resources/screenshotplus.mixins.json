@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "me.imtoggle.screenshotplus.mixin",
+  "compatibilityLevel": "${java}",
+  "refmap": "screenshotplus.refmap.json",
+  "mixins": [
+    "ConfigScreenMixin",
+    "NavigationMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
