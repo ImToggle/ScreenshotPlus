@@ -13,9 +13,9 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-val DATE = 1
+private val DATE = 1
 
-val WORLD = 2
+private val WORLD = 2
 
 var dateTimeFormatter = DateTimeFormatter.ofPattern(ModConfig.dateFormat, Locale.getDefault())
 
@@ -24,7 +24,7 @@ var rootFolder = File(ModConfig.screenShotRootFolder)
 val capturing
     get() = tasks.isNotEmpty()
 
-var tasks = ArrayList<ScreenshotInfo>()
+private val tasks = ArrayList<ScreenshotInfo>()
 
 var toggled = false
 

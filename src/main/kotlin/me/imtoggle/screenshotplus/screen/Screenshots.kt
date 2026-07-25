@@ -60,25 +60,25 @@ import kotlin.time.Duration.Companion.milliseconds
 
 data class ImageData(val thumbnail: ImageBitmap, val image: ImageBitmap, val file: File)
 
-val images = mutableStateListOf<ImageData>()
+private val images = mutableStateListOf<ImageData>()
 
-val bounds = mutableMapOf<Int, Rect>()
+private val bounds = mutableMapOf<Int, Rect>()
 
-val selected = mutableStateListOf<ImageData>()
+private val selected = mutableStateListOf<ImageData>()
 
-val dragSelected = mutableStateListOf<Int>()
+private val dragSelected = mutableStateListOf<Int>()
 
-var currentIndex by mutableStateOf(-1)
+private var currentIndex by mutableStateOf(-1)
 
-var folders = mutableStateListOf<String>()
+private var folders = mutableStateListOf<String>()
 
-var lastSelected = 0
+private var lastSelected = 0
 
-var isCtrl = false
+private var isCtrl = false
 
-var isShift = false
+private var isShift = false
 
-var currentPath = mutableListOf(ModConfig.screenShotRootFolder)
+private var currentPath = mutableListOf(ModConfig.screenShotRootFolder)
 
 fun getPath() = File(currentPath.joinToString("/"))
 
