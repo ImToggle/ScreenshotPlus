@@ -4,15 +4,16 @@
   "compatibilityLevel": "${java}",
   "refmap": "screenshotplus.refmap.json",
   "mixins": [
-    "RoutesMixin",
+    "NavigationMixin",
     "NavigationRouteMixin",
-    "NavigationMixin"
+    "RoutesMixin"
   ],
   "injectors": {
     "defaultRequire": 1
   },
   "client": [
     "MinecraftMixin",
+    "OneConfigUIScreenMixin",
     "ScreenshotMixin"
   ]
 }

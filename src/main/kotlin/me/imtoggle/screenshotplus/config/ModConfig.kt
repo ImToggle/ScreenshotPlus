@@ -3,8 +3,10 @@ package me.imtoggle.screenshotplus.config
 import me.imtoggle.screenshotplus.util.dateTimeFormatter
 import me.imtoggle.screenshotplus.util.rootFolder
 import org.polyfrost.oneconfig.api.config.v1.Config
+import org.polyfrost.oneconfig.api.config.v1.annotations.DraggableList
 import org.polyfrost.oneconfig.api.config.v1.annotations.Dropdown
 import org.polyfrost.oneconfig.api.config.v1.annotations.File
+import org.polyfrost.oneconfig.api.config.v1.annotations.RadioButton
 import org.polyfrost.oneconfig.api.config.v1.annotations.Slider
 import org.polyfrost.oneconfig.api.config.v1.annotations.Switch
 import org.polyfrost.oneconfig.api.config.v1.annotations.Text
@@ -12,7 +14,7 @@ import org.polyfrost.oneconfig.utils.v1.dsl.mc
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-object ModConfig : Config("screenshotplus.json", "Screenshot+", Category.UTILITY) {
+object ModConfig : Config("screenshotplus.json", "/assets/screenshotplus/icon_dark.svg", "Screenshot+", Category.UTILITY) {
 
     @Switch(
         title = "Hide GUI"
@@ -29,6 +31,18 @@ object ModConfig : Config("screenshotplus.json", "Screenshot+", Category.UTILITY
         title = "Use Custom Size"
     )
     var customSize = false
+
+    @RadioButton(
+        title = "Resize Mode",
+        options = ["Multiplier", "Absolute"]
+    )
+    var resizeMode = 0
+
+    @Slider(
+        title = "Scale",
+        min = 0.1f, max = 4f, step = 0.1f
+    )
+    var screenShotScale = 1f
 
     @Slider(
         title = "Screenshot Width",
@@ -60,6 +74,13 @@ object ModConfig : Config("screenshotplus.json", "Screenshot+", Category.UTILITY
     )
     var dateFormat = "yyyy-MM"
 
+    @DraggableList(
+        title = "Screenshot Behavior",
+        checkable = true,
+        options = ["Crop",  "Copy", "Save to Files"]
+    )
+    var behavior = arrayOf<String>()
+
     init {
         addCallback("screenShotRootFolder") {
             rootFolder = java.io.File(screenShotRootFolder)
@@ -68,8 +89,12 @@ object ModConfig : Config("screenshotplus.json", "Screenshot+", Category.UTILITY
             dateTimeFormatter = DateTimeFormatter.ofPattern(dateFormat, Locale.getDefault())
         }
         hideIf("dateFormat") { organizeRule != 1 }
-        addDependency("screenShotWidth", "customSize")
-        addDependency("screenShotHeight", "customSize")
+        arrayOf("resizeMode", "screenShotScale", "screenShotWidth", "screenShotHeight").forEach { option ->
+            hideIf(option) { !customSize }
+        }
+        hideIf("screenShotScale") { resizeMode == 1 }
+        hideIf("screenShotWidth") { resizeMode == 0 }
+        hideIf("screenShotHeight") { resizeMode == 0 }
     }
 
 }

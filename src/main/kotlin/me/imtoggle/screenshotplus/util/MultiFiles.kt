@@ -6,7 +6,7 @@ import java.awt.datatransfer.UnsupportedFlavorException
 import java.io.File
 import java.io.IOException
 
-class MultiImages(private val files: List<File>) : Transferable {
+class MultiFiles(vararg val file: File) : Transferable {
 
     private val flavors = arrayOf(DataFlavor.javaFileListFlavor)
 
@@ -20,6 +20,6 @@ class MultiImages(private val files: List<File>) : Transferable {
         if (!isDataFlavorSupported(flavor)) {
             throw UnsupportedFlavorException(flavor)
         }
-        return files
+        return file
     }
 }

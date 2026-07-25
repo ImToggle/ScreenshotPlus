@@ -20,7 +20,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -33,8 +35,11 @@ import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import me.imtoggle.screenshotplus.config.ModConfig
-import me.imtoggle.screenshotplus.util.MultiImages
+import me.imtoggle.screenshotplus.util.MultiFiles
+import org.jetbrains.skia.Image
+import org.jetbrains.skia.Surface
 import org.polyfrost.compose.render.ImageLoader
+import org.polyfrost.oneconfig.api.platform.v1.Platform
 import org.polyfrost.oneconfig.internal.ui.components.Chip
 import org.polyfrost.oneconfig.internal.ui.components.Icon
 import org.polyfrost.oneconfig.internal.ui.components.Text
@@ -53,7 +58,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.Duration.Companion.milliseconds
 
-data class ImageData(val bitmap: ImageBitmap, val file: File)
+data class ImageData(val thumbnail: ImageBitmap, val image: ImageBitmap, val file: File)
 
 val images = mutableStateListOf<ImageData>()
 
@@ -79,6 +84,19 @@ fun getPath() = File(currentPath.joinToString("/"))
 
 fun getSelected(image: ImageData) = if (selected.isEmpty()) listOf(image) else selected + image
 
+fun processThumbnail(image: Image): ImageBitmap? {
+    if (image.width <= 480 && image.height <= 480) return null
+    val size = 480 / max(image.width, image.height).toFloat()
+    val width = (image.width * size).toInt()
+    val height = (image.height * size).toInt()
+    Surface.makeRasterN32Premul(width, height).use { surface ->
+        surface.canvas.drawImageRect(image, org.jetbrains.skia.Rect.makeWH(width.toFloat(), height.toFloat()))
+        surface.makeImageSnapshot().use { newImage ->
+            return newImage.toComposeImageBitmap()
+        }
+    }
+}
+
 fun refreshImages(together: Boolean = false) {
     val newList = mutableListOf<ImageData>()
     if (!together) images.clear()
@@ -86,23 +104,31 @@ fun refreshImages(together: Boolean = false) {
     runAsync {
         val folder = getPath()
         if (!folder.exists()) return@runAsync
-        folder.listFiles()?.forEach { file ->
-            if (file.isFile && file.extension == "png") {
-                ImageLoader.fromFile(file.absolutePath)?.toComposeImageBitmap()?.let { bitMap ->
+        folder.listFiles()?.let { listFiles ->
+            listFiles.sortBy { it.lastModified() }
+            listFiles.forEach { file ->
+                if (file.isFile && file.extension == "png") {
+                    val image = ImageLoader.fromFile(file.absolutePath) ?: return@runAsync
+                    val bitMap = image.toComposeImageBitmap()
+                    val thumbnail = processThumbnail(image) ?: bitMap
                     mc.execute {
-                        if (together) {
-                            newList += ImageData(bitMap, file)
-                        } else {
-                            images += ImageData(bitMap, file)
+                        if (folder.absolutePath != getPath().absolutePath) return@execute
+                        ImageData(thumbnail, bitMap, file).let {
+                            if (together) {
+                                newList += it
+                            } else {
+                                images += it
+                            }
                         }
                     }
+                } else if (file.isDirectory) {
+                    if (folder.absolutePath == getPath().absolutePath) folders.add(file.name)
                 }
-            } else if (file.isDirectory) {
-                folders.add(file.name)
             }
         }
         if (together) {
             mc.execute {
+                if (folder.absolutePath != getPath().absolutePath) return@execute
                 images.clear()
                 images.addAll(newList)
             }
@@ -110,7 +136,7 @@ fun refreshImages(together: Boolean = false) {
     }
 }
 
-fun makeRect(start: Offset, offset: Offset, density: Float): Rect {
+fun makeRect(start: Offset, offset: Offset): Rect {
     val end = start + offset
     return Rect(min(start.x, end.x), min(start.y, end.y), max(start.x, end.x), max(start.y, end.y))
 }
@@ -119,14 +145,13 @@ fun makeRect(start: Offset, offset: Offset, density: Float): Rect {
 fun Screenshots() {
     LaunchedEffect(Unit) {
         lastSelected = 0
-        currentPath = mutableListOf(ModConfig.screenShotRootFolder)
         refreshImages(false)
     }
     val interactionSource = rememberInteractionSource()
     var start by remember { mutableStateOf(Offset.Zero) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     val density = LocalDensity.current.density
-    var dragRect by remember { mutableStateOf(makeRect(start, offset, density)) }
+    var dragRect by remember { mutableStateOf(makeRect(start, offset)) }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(19.dp),
@@ -135,6 +160,7 @@ fun Screenshots() {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            rememberScrollState()
             currentPath.forEachIndexed { index, name ->
                 if (index == 0) {
                     Chip(
@@ -153,9 +179,7 @@ fun Screenshots() {
                         icon = "folder",
                         onClick = {
                             currentPath = currentPath.subList(0, index)
-                            println(getPath())
                             currentPath += name
-                            println(getPath())
                             refreshImages(false)
                         }
                     )
@@ -172,11 +196,29 @@ fun Screenshots() {
                     }
                 )
             }
+            Chip(
+                label = "",
+                selected = false,
+                icon = "plus",
+                onClick = {
+
+                }
+            )
         }
         Box(modifier = Modifier
             .weight(1f)
             .onClick(interactionSource) {
                 selected.clear()
+            }
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        if (event.buttons.isSecondaryPressed) {
+                            println("Right click detected!")
+                        }
+                    }
+                }
             }
             .onKeyEvent { keyEvent ->
                 isCtrl = keyEvent.isCtrlPressed
@@ -184,7 +226,7 @@ fun Screenshots() {
                 if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
                 when (keyEvent.key) {
                     Key.C -> if (isCtrl) {
-                        ClipboardHelper.setTransferable(MultiImages(selected.map { it.file }))
+                        ClipboardHelper.setTransferable(MultiFiles(*selected.map { it.file }.toTypedArray()))
                     }
                 }
                 false
@@ -196,7 +238,7 @@ fun Screenshots() {
                     },
                     onDrag = { _, dragAmount ->
                         offset += dragAmount
-                        dragRect = makeRect(start, offset, density)
+                        dragRect = makeRect(start, offset)
                         dragSelected.clear()
                         bounds.entries.forEach { (index, bound) ->
                             if (dragRect.overlaps(bound)) {
@@ -207,7 +249,7 @@ fun Screenshots() {
                     onDragEnd = {
                         offset = Offset.Zero
                         selected.addAll(dragSelected.map { images[it] })
-                        selected.sortBy { it.file.name }
+                        selected.sortBy { it.file.lastModified() }
                         dragSelected.clear()
                     }
                 )
@@ -220,7 +262,7 @@ fun Screenshots() {
                     columns = GridCells.Fixed(4),
                     verticalArrangement = Arrangement.spacedBy(19.dp),
                     horizontalArrangement = Arrangement.spacedBy(19.dp),
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier.padding(end = 8.dp)
                 ) {
                     itemsIndexed(
                         items = images,
@@ -270,7 +312,7 @@ fun ImageComponent(image: ImageData, index: Int) {
                 } else {
                     selected.add(image)
                 }
-                selected.sortBy { it.file.name }
+                selected.sortBy { it.file.lastModified() }
                 if (System.currentTimeMillis() - lastClick < 500L) {
                     currentIndex = index
                 }
@@ -292,7 +334,7 @@ fun ImageComponent(image: ImageData, index: Int) {
                 .background(LocalTheme.current.modCardBackground)
         ) {
             Image(
-                bitmap = image.bitmap,
+                bitmap = image.thumbnail,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize(),
@@ -332,7 +374,7 @@ fun ImageButton(image: ImageData) {
                 shape = LocalTheme.current.buttonShape,
                 contentPadding = PaddingValues.Zero,
                 colors = ButtonDefaults.buttonColors(backgroundColor = Accent),
-                onClick = { println("hi") }
+                onClick = { Platform.screen().display(EditorScreen()) }
             ) {
                 Icon("paintbrush", color = LocalTheme.current.accentTextColor)
             }
@@ -417,7 +459,7 @@ fun ImageView(image: ImageData) {
                     .fillMaxSize(0.8f),
                 contentAlignment = Alignment.Center
             ) {
-                val bitmap = image.bitmap
+                val bitmap = image.image
                 Image(
                     bitmap = bitmap,
                     contentDescription = null,

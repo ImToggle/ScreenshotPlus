@@ -21,7 +21,7 @@ public abstract class MinecraftMixin {
 
     @Inject(method = "renderFrame", at = @At(value = "TAIL"))
     private void takeScreenshot(CallbackInfo ci) {
-        Util.handle();
+        Util.handleScreenshot();
     }
 
     @Inject(method = "handleGlobalKeyPress", at = @At("HEAD"), cancellable = true)

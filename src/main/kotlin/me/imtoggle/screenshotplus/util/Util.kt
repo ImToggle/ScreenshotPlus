@@ -3,15 +3,15 @@
 package me.imtoggle.screenshotplus.util
 
 import androidx.compose.ui.util.fastForEach
+import com.mojang.blaze3d.platform.NativeImage
 import me.imtoggle.screenshotplus.config.ModConfig
 import net.minecraft.client.Screenshot
+import org.polyfrost.oneconfig.utils.v1.ClipboardHelper
 import org.polyfrost.oneconfig.utils.v1.dsl.mc
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
-
-val NONE = 0
 
 val DATE = 1
 
@@ -28,6 +28,9 @@ var tasks = ArrayList<ScreenshotInfo>()
 
 var toggled = false
 
+@JvmField
+var quit = false
+
 data class ScreenshotInfo(var frame: Int)
 
 fun startCapture() {
@@ -35,12 +38,17 @@ fun startCapture() {
         toggled = true
         mc.gui.hud.toggle()
     }
-    tasks.add(ScreenshotInfo(ModConfig.delay))
     if (ModConfig.customSize) {
-        mc.window.width = ModConfig.screenShotWidth
-        mc.window.height = ModConfig.screenShotHeight
+        if (ModConfig.resizeMode == 1) {
+            mc.window.width = ModConfig.screenShotWidth
+            mc.window.height = ModConfig.screenShotHeight
+        } else {
+            mc.window.width = (mc.window.width * ModConfig.screenShotScale).toInt()
+            mc.window.height = (mc.window.height * ModConfig.screenShotScale).toInt()
+        }
         mc.resizeGui()
     }
+    tasks.add(ScreenshotInfo(ModConfig.delay))
 }
 
 fun update() {
@@ -57,7 +65,7 @@ fun update() {
     }
 }
 
-fun handle() {
+fun handleScreenshot() {
     if (!capturing) return
     tasks.fastForEach { task ->
         if (--task.frame < 0) {
@@ -66,7 +74,10 @@ fun handle() {
             update()
         }
     }
+}
 
+fun handleCallback(image: NativeImage, file: File) {
+    ClipboardHelper.setTransferable(MultiFiles(file))
 }
 
 fun getWorldName(): String {
@@ -76,9 +87,9 @@ fun getWorldName(): String {
 }
 
 fun getFolder(): File {
-    return when(ModConfig.organizeRule) {
+    return when (ModConfig.organizeRule) {
         DATE -> rootFolder.resolve("${dateTimeFormatter.format(LocalDateTime.now())}")
         WORLD -> rootFolder.resolve(getWorldName())
-        else -> rootFolder.resolve(getFolder())
+        else -> rootFolder
     }
 }

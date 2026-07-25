@@ -12,6 +12,7 @@ import java.util.Locale
 class ScreenshotPlus : ClientModInitializer {
 
     override fun onInitializeClient() {
+        System.setProperty("java.awt.headless", "false")
         ModConfig.preload()
         rootFolder = java.io.File(screenShotRootFolder)
         dateTimeFormatter = DateTimeFormatter.ofPattern(dateFormat, Locale.getDefault())
