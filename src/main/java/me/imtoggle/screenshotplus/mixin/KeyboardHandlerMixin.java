@@ -17,13 +17,13 @@ import java.util.function.Consumer;
 public class KeyboardHandlerMixin {
 
     //? if < 26.2 {
-    /*@WrapOperation(method = "keyPress", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Screenshot;grab(Ljava/io/File;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V"))
+    @WrapOperation(method = "keyPress", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Screenshot;grab(Ljava/io/File;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V"))
     private void start(File workDir, RenderTarget target, Consumer<Component> callback, Operation<Void> original) {
         Util.startCapture((() -> {
             original.call(workDir, target, callback);
             return Unit.INSTANCE;
         }));
     }
-    *///? }
+    //? }
 
 }

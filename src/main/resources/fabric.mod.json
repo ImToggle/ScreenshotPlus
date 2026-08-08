@@ -14,7 +14,6 @@
   "license": "",
   "icon": "assets/screenshotplus/icon.png",
   "environment": "*",
-  "accessWidener": "aw/${aw_file}",
   "entrypoints": {
     "client": [
       {

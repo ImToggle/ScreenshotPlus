@@ -35,18 +35,26 @@ data class ScreenshotInfo(var frame: Int, val function: () -> Unit)
 val isGuiHidden: Boolean
     get() {
         //? if >= 26.2 {
-        return mc.gui.hud.isHidden
-        //? } else {
-        /*return mc.options.hideGui
-        *///? }
+        /*return mc.gui.hud.isHidden
+        *///? } else {
+        return mc.options.hideGui
+        //? }
     }
 
 fun toggleGui(on: Boolean) {
     //? if >= 26.2 {
-    if (isGuiHidden == on) mc.gui.hud.toggle()
-    //? } else {
-    /*mc.options.hideGui = !on
-    *///? }
+    /*if (isGuiHidden == on) mc.gui.hud.toggle()
+    *///? } else {
+    mc.options.hideGui = !on
+    //? }
+}
+
+fun resizeMC() {
+    //? if >= 26.1 {
+    /*mc.resizeGui()
+    *///? } else {
+    mc.resizeDisplay()
+    //? }
 }
 
 fun startCapture(function: () -> Unit) {
@@ -62,9 +70,10 @@ fun startCapture(function: () -> Unit) {
             mc.window.width = (mc.window.width * ModConfig.screenShotScale).toInt()
             mc.window.height = (mc.window.height * ModConfig.screenShotScale).toInt()
         }
-        mc.resizeGui()
+        resizeMC()
+
     }
-    tasks.add(ScreenshotInfo(ModConfig.delay, function))
+    tasks.add(ScreenshotInfo(if (ModConfig.delay == 0 && toggled) 1 else ModConfig.delay, function))
 }
 
 fun update() {
@@ -76,7 +85,7 @@ fun update() {
         if (ModConfig.customSize) {
             mc.window.width = mc.window.screenWidth
             mc.window.height = mc.window.screenHeight
-            mc.resizeGui()
+            resizeMC()
         }
     }
 }
