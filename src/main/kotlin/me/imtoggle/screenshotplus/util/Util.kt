@@ -7,6 +7,7 @@ import com.mojang.blaze3d.platform.NativeImage
 import me.imtoggle.screenshotplus.config.ModConfig
 import org.polyfrost.oneconfig.utils.v1.ClipboardHelper
 import org.polyfrost.oneconfig.utils.v1.dsl.mc
+import org.polyfrost.oneconfig.utils.v1.dsl.runAsync
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -103,7 +104,9 @@ fun handleScreenshot() {
 
 fun handleCallback(image: NativeImage, file: File) {
     if (ModConfig.copyScreenshot) {
-        ClipboardHelper.setTransferable(MultiFiles(file))
+        runAsync {
+            ClipboardHelper.setTransferable(MultiFiles(file))
+        }
     }
 }
 

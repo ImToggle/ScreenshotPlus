@@ -79,7 +79,7 @@ var currentPath = mutableListOf(ModConfig.screenShotRootFolder)
 
 fun getPath() = File(currentPath.joinToString("/"))
 
-fun getSelected(image: ImageData) = selected + image
+fun getSelected(image: ImageData) = selected.apply { if (!contains(image)) add(image) }
 
 fun processThumbnail(image: Image): ImageBitmap? {
     if (image.width <= 480 && image.height <= 480) return null
@@ -235,7 +235,9 @@ fun Screenshots() {
                         selected.sortBy { it.file.lastModified() }
                     }
                     Key.C -> if (isCtrl) {
-                        ClipboardHelper.setTransferable(MultiFiles(*selected.map { it.file }.toTypedArray()))
+                        runAsync {
+                            ClipboardHelper.setTransferable(MultiFiles(*selected.map { it.file }.toTypedArray()))
+                        }
                     }
                     Key.Delete -> {
                         runAsync {
@@ -385,25 +387,30 @@ fun ImageButton(image: ImageData) {
                 .padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-//            Button(
-//                modifier = Modifier
-//                    .size(32.dp),
-//                shape = LocalTheme.current.buttonShape,
-//                contentPadding = PaddingValues.Zero,
-//                colors = ButtonDefaults.buttonColors(backgroundColor = Accent),
-//                onClick = { Platform.screen().display(EditorScreen()) }
-//            ) {
-//                Icon("paintbrush", color = LocalTheme.current.accentTextColor)
-//            }
             Button(
-                modifier = Modifier
-                    .size(32.dp),
+                modifier = Modifier.size(32.dp),
+                shape = LocalTheme.current.buttonShape,
+                contentPadding = PaddingValues.Zero,
+                colors = ButtonDefaults.buttonColors(backgroundColor = Accent),
+                onClick = {
+                    UiSounds.play(UiSoundEvent.CLICK)
+                    runAsync {
+                        val selection = getSelected(image)
+                        selection.sortedBy { it.file.lastModified() }
+                        ClipboardHelper.setTransferable(MultiFiles(*selection.map { it.file }.toTypedArray()))
+                    }
+                }
+            ) {
+                Icon("copy", color = LocalTheme.current.accentTextColor)
+            }
+            Button(
+                modifier = Modifier.size(32.dp),
                 shape = LocalTheme.current.buttonShape,
                 contentPadding = PaddingValues.Zero,
                 colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFE5484D)),
                 onClick = {
+                    UiSounds.play(UiSoundEvent.CLICK)
                     try {
-                        UiSounds.play(UiSoundEvent.CLICK)
                         runAsync {
                             getSelected(image).fastForEach { it.file.delete() }
                             refreshImages(true)
