@@ -15,13 +15,27 @@ import java.util.function.Consumer;
 @Mixin(Screenshot.class)
 public class ScreenshotMixin {
 
-    @ModifyVariable(method = "lambda$grab$2", at = @At("STORE"), ordinal = 1)
+    @ModifyVariable(
+            method =
+            //? if >= 26.2 {
+            "lambda$grab$2"
+            //? } else {
+            /*"lambda$grab$0"
+            *///? }
+            , at = @At("STORE"), ordinal = 1)
     private static File replaceDirectory(File picDir) {
         return Util.getFolder();
     }
 
-    @Inject(method = "lambda$grab$3", at = @At(value = "INVOKE", target = "Ljava/util/function/Consumer;accept(Ljava/lang/Object;)V"))
-    private static void handleCallback(NativeImage image, File file, Consumer callback, CallbackInfo ci) {
+    @Inject(method = 
+            //? if >= 26.2 {
+            "lambda$grab$3"
+            //? } else {
+            /*"lambda$grab$1"
+            *///? }
+            , at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/NativeImage;writeToFile(Ljava/io/File;)V", shift = At.Shift.AFTER))
+    private static void handleCallback(NativeImage image, File file, Consumer<?> callback, CallbackInfo ci) {
         Util.handleCallback(image, file);
     }
+
 }

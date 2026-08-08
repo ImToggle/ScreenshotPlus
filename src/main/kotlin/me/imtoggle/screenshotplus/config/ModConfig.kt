@@ -1,9 +1,9 @@
 package me.imtoggle.screenshotplus.config
 
+import me.imtoggle.screenshotplus.screen.currentPath
 import me.imtoggle.screenshotplus.util.dateTimeFormatter
 import me.imtoggle.screenshotplus.util.rootFolder
 import org.polyfrost.oneconfig.api.config.v1.Config
-import org.polyfrost.oneconfig.api.config.v1.annotations.DraggableList
 import org.polyfrost.oneconfig.api.config.v1.annotations.Dropdown
 import org.polyfrost.oneconfig.api.config.v1.annotations.File
 import org.polyfrost.oneconfig.api.config.v1.annotations.RadioButton
@@ -74,16 +74,15 @@ object ModConfig : Config("screenshotplus.json", "/assets/screenshotplus/icon_da
     )
     var dateFormat = "yyyy-MM"
 
-    @DraggableList(
-        title = "Screenshot Behavior",
-        checkable = true,
-        options = ["Crop",  "Copy", "Save to Files"]
+    @Switch(
+        title = "Copy Screenshot"
     )
-    var behavior = arrayOf<String>()
+    var copyScreenshot = false
 
     init {
         addCallback("screenShotRootFolder") {
             rootFolder = java.io.File(screenShotRootFolder)
+            currentPath = mutableListOf(screenShotRootFolder)
         }
         addCallback("dateFormat") {
             dateTimeFormatter = DateTimeFormatter.ofPattern(dateFormat, Locale.getDefault())

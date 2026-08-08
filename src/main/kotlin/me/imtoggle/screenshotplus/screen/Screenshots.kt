@@ -20,9 +20,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -39,7 +37,6 @@ import me.imtoggle.screenshotplus.util.MultiFiles
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.Surface
 import org.polyfrost.compose.render.ImageLoader
-import org.polyfrost.oneconfig.api.platform.v1.Platform
 import org.polyfrost.oneconfig.internal.ui.components.Chip
 import org.polyfrost.oneconfig.internal.ui.components.Icon
 import org.polyfrost.oneconfig.internal.ui.components.Text
@@ -78,11 +75,11 @@ private var isCtrl = false
 
 private var isShift = false
 
-private var currentPath = mutableListOf(ModConfig.screenShotRootFolder)
+var currentPath = mutableListOf(ModConfig.screenShotRootFolder)
 
 fun getPath() = File(currentPath.joinToString("/"))
 
-fun getSelected(image: ImageData) = if (selected.isEmpty()) listOf(image) else selected + image
+fun getSelected(image: ImageData) = selected + image
 
 fun processThumbnail(image: Image): ImageBitmap? {
     if (image.width <= 480 && image.height <= 480) return null
@@ -144,7 +141,9 @@ fun makeRect(start: Offset, offset: Offset): Rect {
 @Composable
 fun Screenshots() {
     LaunchedEffect(Unit) {
+        currentIndex = -1
         lastSelected = 0
+        selected.clear()
         refreshImages(false)
     }
     val interactionSource = rememberInteractionSource()
@@ -169,6 +168,8 @@ fun Screenshots() {
                         icon = "folder",
                         onClick = {
                             currentPath = mutableListOf(ModConfig.screenShotRootFolder)
+                            selected.clear()
+                            lastSelected = 0
                             refreshImages(false)
                         }
                     )
@@ -180,6 +181,8 @@ fun Screenshots() {
                         onClick = {
                             currentPath = currentPath.subList(0, index)
                             currentPath += name
+                            selected.clear()
+                            lastSelected = 0
                             refreshImages(false)
                         }
                     )
@@ -192,41 +195,53 @@ fun Screenshots() {
                     icon = "folder",
                     onClick = {
                         currentPath += it
+                        selected.clear()
+                        lastSelected = 0
                         refreshImages(false)
                     }
                 )
             }
-            Chip(
-                label = "",
-                selected = false,
-                icon = "plus",
-                onClick = {
-
-                }
-            )
+//            Chip(
+//                label = "",
+//                selected = false,
+//                icon = "plus",
+//                onClick = {
+//
+//                }
+//            )
         }
         Box(modifier = Modifier
             .weight(1f)
             .onClick(interactionSource) {
                 selected.clear()
             }
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Main)
-                        if (event.buttons.isSecondaryPressed) {
-                            println("Right click detected!")
-                        }
-                    }
-                }
-            }
+//            .pointerInput(Unit) {
+//                awaitPointerEventScope {
+//                    while (true) {
+//                        val event = awaitPointerEvent(PointerEventPass.Main)
+//                        if (event.buttons.isSecondaryPressed) {
+//                            println("Right click detected!")
+//                        }
+//                    }
+//                }
+//            }
             .onKeyEvent { keyEvent ->
                 isCtrl = keyEvent.isCtrlPressed
                 isShift = keyEvent.isShiftPressed
                 if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
                 when (keyEvent.key) {
+                    Key.A -> if (isCtrl) {
+                        selected.addAll(images)
+                        selected.sortBy { it.file.lastModified() }
+                    }
                     Key.C -> if (isCtrl) {
                         ClipboardHelper.setTransferable(MultiFiles(*selected.map { it.file }.toTypedArray()))
+                    }
+                    Key.Delete -> {
+                        runAsync {
+                            selected.fastForEach { it.file.delete() }
+                            refreshImages(true)
+                        }
                     }
                 }
                 false
@@ -235,6 +250,7 @@ fun Screenshots() {
                 detectDragGestures(
                     onDragStart = { pos: Offset ->
                         start = pos
+                        dragSelected.clear()
                     },
                     onDrag = { _, dragAmount ->
                         offset += dragAmount
@@ -264,6 +280,7 @@ fun Screenshots() {
                     horizontalArrangement = Arrangement.spacedBy(19.dp),
                     modifier = Modifier.padding(end = 8.dp)
                 ) {
+                    bounds.clear()
                     itemsIndexed(
                         items = images,
                     ) { index, image ->
@@ -368,16 +385,16 @@ fun ImageButton(image: ImageData) {
                 .padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(
-                modifier = Modifier
-                    .size(32.dp),
-                shape = LocalTheme.current.buttonShape,
-                contentPadding = PaddingValues.Zero,
-                colors = ButtonDefaults.buttonColors(backgroundColor = Accent),
-                onClick = { Platform.screen().display(EditorScreen()) }
-            ) {
-                Icon("paintbrush", color = LocalTheme.current.accentTextColor)
-            }
+//            Button(
+//                modifier = Modifier
+//                    .size(32.dp),
+//                shape = LocalTheme.current.buttonShape,
+//                contentPadding = PaddingValues.Zero,
+//                colors = ButtonDefaults.buttonColors(backgroundColor = Accent),
+//                onClick = { Platform.screen().display(EditorScreen()) }
+//            ) {
+//                Icon("paintbrush", color = LocalTheme.current.accentTextColor)
+//            }
             Button(
                 modifier = Modifier
                     .size(32.dp),
@@ -442,7 +459,12 @@ fun ImageView(image: ImageData) {
                     .onClick(interactionSource) {
                         currentIndex = (currentIndex - 1).coerceIn(images.indices)
                     }
-            )
+            ) {
+                Icon("left-arrow", color = LocalTheme.current.accentTextColor,
+                    modifier = Modifier.align(Alignment.Center)
+                        .fillMaxSize(0.5f)
+                )
+            }
             if (currentIndex < images.size - 1) Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -453,7 +475,12 @@ fun ImageView(image: ImageData) {
                         currentIndex = (currentIndex + 1).coerceIn(images.indices)
 
                     }
-            )
+            ) {
+                Icon("right-arrow", color = LocalTheme.current.accentTextColor,
+                    modifier = Modifier.align(Alignment.Center)
+                        .fillMaxSize(0.5f)
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize(0.8f),

@@ -5,7 +5,6 @@ package me.imtoggle.screenshotplus.util
 import androidx.compose.ui.util.fastForEach
 import com.mojang.blaze3d.platform.NativeImage
 import me.imtoggle.screenshotplus.config.ModConfig
-import net.minecraft.client.Screenshot
 import org.polyfrost.oneconfig.utils.v1.ClipboardHelper
 import org.polyfrost.oneconfig.utils.v1.dsl.mc
 import java.io.File
@@ -31,12 +30,29 @@ var toggled = false
 @JvmField
 var quit = false
 
-data class ScreenshotInfo(var frame: Int)
+data class ScreenshotInfo(var frame: Int, val function: () -> Unit)
 
-fun startCapture() {
-    if (!capturing && !mc.gui.hud.isHidden && ModConfig.hideGUI) {
+val isGuiHidden: Boolean
+    get() {
+        //? if >= 26.2 {
+        return mc.gui.hud.isHidden
+        //? } else {
+        /*return mc.options.hideGui
+        *///? }
+    }
+
+fun toggleGui(on: Boolean) {
+    //? if >= 26.2 {
+    if (isGuiHidden == on) mc.gui.hud.toggle()
+    //? } else {
+    /*mc.options.hideGui = !on
+    *///? }
+}
+
+fun startCapture(function: () -> Unit) {
+    if (!capturing && !isGuiHidden && ModConfig.hideGUI) {
         toggled = true
-        mc.gui.hud.toggle()
+        toggleGui(false)
     }
     if (ModConfig.customSize) {
         if (ModConfig.resizeMode == 1) {
@@ -48,14 +64,14 @@ fun startCapture() {
         }
         mc.resizeGui()
     }
-    tasks.add(ScreenshotInfo(ModConfig.delay))
+    tasks.add(ScreenshotInfo(ModConfig.delay, function))
 }
 
 fun update() {
     if (!capturing) {
         if (toggled) {
             toggled = false
-            mc.gui.hud.toggle()
+            toggleGui(true)
         }
         if (ModConfig.customSize) {
             mc.window.width = mc.window.screenWidth
@@ -69,15 +85,17 @@ fun handleScreenshot() {
     if (!capturing) return
     tasks.fastForEach { task ->
         if (--task.frame < 0) {
-            Screenshot.grab(mc, false)
-            tasks.removeFirst()
+            task.function.invoke()
+            tasks.remove(task)
             update()
         }
     }
 }
 
 fun handleCallback(image: NativeImage, file: File) {
-    ClipboardHelper.setTransferable(MultiFiles(file))
+    if (ModConfig.copyScreenshot) {
+        ClipboardHelper.setTransferable(MultiFiles(file))
+    }
 }
 
 fun getWorldName(): String {

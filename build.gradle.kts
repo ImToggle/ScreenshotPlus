@@ -19,10 +19,7 @@ val requiredJava: JavaVersion = when {
 val compatibleVersions: List<String> = sc.properties.rawOrNull("mod", "mc_releases")
     ?.asList().orEmpty().map { it.toString() }
 
-val accessWidener = when {
-    sc.current.parsed >= "26.2" -> "26.2.accesswidener"
-    else -> "1.19.accesswidener"
-}
+val accessWidener = "26.2.accesswidener"
 
 repositories {
     /**
@@ -64,7 +61,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     fapi("fabric-lifecycle-events-v1", "fabric-resource-loader-v0", "fabric-content-registries-v0", "fabric-registry-sync-v0")
 
-    val oneconfigversion = "1.0.6"
+    val oneconfigversion = "1.1.4"
 
     listOf(
         "commands",

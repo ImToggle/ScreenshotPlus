@@ -1,7 +1,6 @@
 package me.imtoggle.screenshotplus.mixin;
 
 import androidx.navigation.NavGraphBuilder;
-import me.imtoggle.screenshotplus.ScreenshotPlus;
 import me.imtoggle.screenshotplus.config.ScreenshotRouteKt;
 import org.polyfrost.oneconfig.internal.ui.navigation.NavigationKt;
 import org.spongepowered.asm.mixin.Mixin;
