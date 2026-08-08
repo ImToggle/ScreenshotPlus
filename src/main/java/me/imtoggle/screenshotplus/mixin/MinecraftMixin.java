@@ -14,19 +14,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MinecraftMixin {
 
     //~ if >= 26.1 'runTick' -> 'renderFrame'
-    @Inject(method = "runTick", at = @At(value = "TAIL"))
+    @Inject(method = "renderFrame", at = @At(value = "TAIL"))
     private void takeScreenshot(CallbackInfo ci) {
         Util.handleScreenshot();
     }
 
     //? if >= 26.2 {
-    /*@WrapOperation(method = "handleGlobalKeyPress", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Screenshot;grab(Lnet/minecraft/client/Minecraft;Z)V"))
+    @WrapOperation(method = "handleGlobalKeyPress", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Screenshot;grab(Lnet/minecraft/client/Minecraft;Z)V"))
     private void start(Minecraft minecraft, boolean debugPanoramaRequested, Operation<Void> original) {
         Util.startCapture(() -> {
             original.call(minecraft, debugPanoramaRequested);
             return Unit.INSTANCE;
         });
     }
-    *///? }
+    //? }
 
 }

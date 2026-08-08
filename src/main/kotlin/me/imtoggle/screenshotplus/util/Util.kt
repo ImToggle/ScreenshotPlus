@@ -33,26 +33,26 @@ data class ScreenshotInfo(var frame: Int, val function: () -> Unit)
 val isGuiHidden: Boolean
     get() {
         //? if >= 26.2 {
-        /*return mc.gui.hud.isHidden
-        *///? } else {
-        return mc.options.hideGui
-        //? }
+        return mc.gui.hud.isHidden
+        //? } else {
+        /*return mc.options.hideGui
+        *///? }
     }
 
 fun toggleGui(on: Boolean) {
     //? if >= 26.2 {
-    /*if (isGuiHidden == on) mc.gui.hud.toggle()
-    *///? } else {
-    mc.options.hideGui = !on
-    //? }
+    if (isGuiHidden == on) mc.gui.hud.toggle()
+    //? } else {
+    /*mc.options.hideGui = !on
+    *///? }
 }
 
 fun resizeMC() {
     //? if >= 26.1 {
-    /*mc.resizeGui()
-    *///? } else {
-    mc.resizeDisplay()
-    //? }
+    mc.resizeGui()
+    //? } else {
+    /*mc.resizeDisplay()
+    *///? }
 }
 
 fun startCapture(function: () -> Unit) {

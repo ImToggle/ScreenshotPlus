@@ -17,12 +17,14 @@ public class ScreenshotMixin {
 
     @ModifyVariable(method =
             //? if >= 26.2 {
-            /*"lambda$grab$2"
-             *///? } elif >= 26.1 {
+            "lambda$grab$2"
+             //? } elif >= 26.1 {
             /*"lambda$grab$0"
-             *///? } else {
-            "method_68157"
-            //? }
+             *///? } elif >= 1.21.5 {
+            /*"method_68157"
+            *///? } else {
+            /*"_grab"
+            *///? }
             , at = @At("STORE"), ordinal = 1)
     private static File replaceDirectory(File picDir) {
         return Util.getFolder();
@@ -30,12 +32,14 @@ public class ScreenshotMixin {
 
     @Inject(method = 
             //? if >= 26.2 {
-            /*"lambda$grab$3"
-            *///? } elif >= 26.1 {
+            "lambda$grab$3"
+            //? } elif >= 26.1 {
             /*"lambda$grab$1"
+            *///? } elif >= 1.21.5 {
+            /*"method_22691"
             *///? } else {
-            "method_22691"
-            //? }
+            /*"method_1661"
+            *///? }
             , at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/NativeImage;writeToFile(Ljava/io/File;)V", shift = At.Shift.AFTER))
     private static void handleCallback(NativeImage image, File file, Consumer<?> callback, CallbackInfo ci) {
         Util.handleCallback(image, file);
