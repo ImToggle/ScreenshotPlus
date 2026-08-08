@@ -362,16 +362,14 @@ fun ImageComponent(image: ImageData, index: Int) {
             )
             if (isHovered) ImageButton(image)
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(12f),
-            contentAlignment = Alignment.CenterStart
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
         ) {
             Text(
                 images[index].file.name,
                 color = LocalTheme.current.textColor,
-                modifier = Modifier.padding(horizontal = 4.dp),
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
     }
