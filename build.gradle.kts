@@ -5,8 +5,8 @@ plugins {
     kotlin("jvm")
 }
 
-version = "${property("mod.version")}+${sc.current.version}"
-base.archivesName = property("mod.name") as String
+version = "${property("mod.version")}+${sc.properties["mod.mc_range"] as String}"
+base.archivesName = "ScreenshotPlus"
 
 val requiredJava: JavaVersion = when {
     sc.current.parsed >= "26.1" -> JavaVersion.VERSION_25

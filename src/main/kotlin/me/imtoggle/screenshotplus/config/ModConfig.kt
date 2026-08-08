@@ -22,13 +22,13 @@ object ModConfig : Config("screenshotplus.json", "/assets/screenshotplus/icon_da
     var hideGUI = false
 
     @Slider(
-        title = "Screenshot Delay",
+        title = "Screenshot Delay (Frame)",
         min = 0f, max = 200f, step = 1f
     )
     var delay = 0
 
     @Switch(
-        title = "Use Custom Size"
+        title = "Use Custom Resolution"
     )
     var customSize = false
 
@@ -71,11 +71,13 @@ object ModConfig : Config("screenshotplus.json", "/assets/screenshotplus/icon_da
 
     @Text(
         title = "Date Format",
+        description = "y: Year, M: Month, d: Day"
     )
     var dateFormat = "yyyy-MM"
 
     @Switch(
-        title = "Copy Screenshot"
+        title = "Copy Screenshot",
+        description = "Automatically copy screenshot"
     )
     var copyScreenshot = false
 

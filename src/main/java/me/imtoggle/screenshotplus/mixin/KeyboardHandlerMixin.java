@@ -1,17 +1,19 @@
 package me.imtoggle.screenshotplus.mixin;
 
+import net.minecraft.client.KeyboardHandler;
+import org.spongepowered.asm.mixin.Mixin;
+
+//? if < 26.2 {
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import kotlin.Unit;
 import me.imtoggle.screenshotplus.util.Util;
-import net.minecraft.client.KeyboardHandler;
 import net.minecraft.network.chat.Component;
-import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-
 import java.io.File;
 import java.util.function.Consumer;
+//? }
 
 @Mixin(KeyboardHandler.class)
 public class KeyboardHandlerMixin {
