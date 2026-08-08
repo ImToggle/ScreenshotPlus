@@ -51,6 +51,7 @@ import org.polyfrost.oneconfig.utils.v1.dsl.mc
 import org.polyfrost.oneconfig.utils.v1.dsl.runAsync
 import org.polyfrost.oneconfig.utils.v1.dsl.schedule
 import java.io.File
+import java.nio.file.Files
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.Duration.Companion.milliseconds
@@ -104,7 +105,7 @@ fun refreshImages(together: Boolean = false) {
         folder.listFiles()?.let { listFiles ->
             listFiles.sortBy { it.lastModified() }
             listFiles.forEach { file ->
-                if (file.isFile && file.extension == "png") {
+                if (file.isFile && Files.probeContentType(file.toPath()).startsWith("image/")) {
                     val image = ImageLoader.fromFile(file.absolutePath) ?: return@runAsync
                     val bitMap = image.toComposeImageBitmap()
                     val thumbnail = processThumbnail(image) ?: bitMap

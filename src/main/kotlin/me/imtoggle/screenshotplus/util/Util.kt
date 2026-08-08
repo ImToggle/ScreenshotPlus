@@ -28,9 +28,6 @@ private val tasks = ArrayList<ScreenshotInfo>()
 
 var toggled = false
 
-@JvmField
-var quit = false
-
 data class ScreenshotInfo(var frame: Int, val function: () -> Unit)
 
 val isGuiHidden: Boolean
@@ -72,9 +69,8 @@ fun startCapture(function: () -> Unit) {
             mc.window.height = (mc.window.height * ModConfig.screenShotScale).toInt()
         }
         resizeMC()
-
     }
-    tasks.add(ScreenshotInfo(if (ModConfig.delay == 0 && toggled) 1 else ModConfig.delay, function))
+    tasks.add(ScreenshotInfo(if (ModConfig.customSize || ModConfig.delay == 0 && toggled) 1 else ModConfig.delay, function))
 }
 
 fun update() {
