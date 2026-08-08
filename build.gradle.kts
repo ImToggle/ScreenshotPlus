@@ -6,7 +6,7 @@ plugins {
 }
 
 version = "${property("mod.version")}+${sc.current.version}"
-base.archivesName = property("mod.id") as String
+base.archivesName = property("mod.name") as String
 
 val requiredJava: JavaVersion = when {
     sc.current.parsed >= "26.1" -> JavaVersion.VERSION_25
@@ -18,6 +18,11 @@ val requiredJava: JavaVersion = when {
 
 val compatibleVersions: List<String> = sc.properties.rawOrNull("mod", "mc_releases")
     ?.asList().orEmpty().map { it.toString() }
+
+val accessWidener = when {
+    sc.current.parsed >= "26.2" -> "26.2.accesswidener"
+    else -> "1.19.accesswidener"
+}
 
 repositories {
     /**
@@ -80,6 +85,8 @@ dependencies {
 loom {
     fabricModJsonPath = rootProject.file("src/main/resources/fabric.mod.json")
 
+    accessWidenerPath = rootProject.file("src/main/resources/aw/$accessWidener")
+
     decompilerOptions.named("vineflower") {
         options.put("mark-corresponding-synthetics", "1")
     }
@@ -116,6 +123,7 @@ tasks {
             register("name", "mod.name")
             register("version", "mod.version")
             register("minecraft", "mod.mc_compat")
+            set("aw_file", accessWidener)
         }
 
         filesMatching("fabric.mod.json") { expand(props) }
