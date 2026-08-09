@@ -10,7 +10,9 @@ import org.polyfrost.oneconfig.internal.ui.components.HeaderKt;
 import org.polyfrost.oneconfig.internal.ui.shell.ShellState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = HeaderKt.class, remap = false)
 public class HeaderMixin {
@@ -23,7 +25,7 @@ public class HeaderMixin {
             ),
             index = 6, remap = false
     )
-    private static Function4<? super AnimatedContentScope, ? super String, ? super Composer, ? super Integer, Unit> wrapTextCall(Function4<? super AnimatedContentScope, ? super String, ? super Composer, ? super Integer, Unit> content) {
+    private static Function4<? super AnimatedContentScope, ? super String, ? super Composer, ? super Integer, Unit> replaceHeader(Function4<? super AnimatedContentScope, ? super String, ? super Composer, ? super Integer, Unit> content) {
         if (ShellState.INSTANCE.getLastRoute() instanceof ScreenshotsGraph) {
             return (scope, text, $composer, $changed) -> {
                 ScreenshotsKt.ScreenshotHeader($composer, $changed);
@@ -31,5 +33,10 @@ public class HeaderMixin {
             };
         }
         return content;
+    }
+
+    @Inject(method = "Header", at = @At(value = "INVOKE", target = "Lorg/polyfrost/oneconfig/internal/ui/shell/ShellState;getOpenOriginalScreen()Ljava/lang/Runnable;"))
+    private static void insertFilter(Composer $composer, int $changed, CallbackInfo ci) {
+        ScreenshotsKt.FilterDropDown($composer, $changed);
     }
 }

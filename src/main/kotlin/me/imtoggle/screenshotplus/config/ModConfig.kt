@@ -1,6 +1,6 @@
 package me.imtoggle.screenshotplus.config
 
-import me.imtoggle.screenshotplus.tree.FileTreeManager
+import me.imtoggle.screenshotplus.tree.FileManager
 import me.imtoggle.screenshotplus.util.dateTimeFormatter
 import org.polyfrost.oneconfig.api.config.v1.Config
 import org.polyfrost.oneconfig.api.config.v1.annotations.Dropdown
@@ -82,7 +82,7 @@ object ModConfig : Config("screenshotplus.json", "/assets/screenshotplus/icon_da
 
     init {
         addCallback("screenShotRootFolder") {
-            FileTreeManager.root = java.io.File(screenShotRootFolder)
+            FileManager.root = java.io.File(screenShotRootFolder)
         }
         addCallback("dateFormat") {
             dateTimeFormatter = DateTimeFormatter.ofPattern(dateFormat, Locale.getDefault())

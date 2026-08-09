@@ -1,6 +1,5 @@
 package me.imtoggle.screenshotplus.screen
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -8,7 +7,6 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.Button
@@ -17,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -39,7 +38,7 @@ import androidx.compose.ui.unit.round
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import me.imtoggle.screenshotplus.tree.FileTreeManager
+import me.imtoggle.screenshotplus.tree.FileManager
 import me.imtoggle.screenshotplus.util.MultiFiles
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.Surface
@@ -100,14 +99,14 @@ fun refreshImages(together: Boolean = false) {
     val newList = mutableListOf<ImageData>()
     if (!together) images.clear()
     runAsync {
-        val currentFolder = FileTreeManager.currentFolder ?: return@runAsync
+        val currentFolder = FileManager.currentFolder ?: return@runAsync
         val folderPath = currentFolder.file.absolutePath
-        FileTreeManager.currentFolder?.images?.forEach { imageNode ->
+        FileManager.currentFolder?.images?.forEach { imageNode ->
             val image = ImageLoader.fromFile(imageNode.file.absolutePath) ?: return@runAsync
             val bitMap = image.toComposeImageBitmap()
             val thumbnail = processThumbnail(image) ?: bitMap
             mc.execute {
-                if (folderPath != FileTreeManager.currentFolder?.file?.absolutePath) return@execute
+                if (folderPath != FileManager.currentFolder?.file?.absolutePath) return@execute
                 ImageData(thumbnail, bitMap, imageNode.file).let {
                     if (together) {
                         newList += it
@@ -119,7 +118,7 @@ fun refreshImages(together: Boolean = false) {
         }
         if (together) {
             mc.execute {
-                if (folderPath != FileTreeManager.currentFolder?.file?.absolutePath) return@execute
+                if (folderPath != FileManager.currentFolder?.file?.absolutePath) return@execute
                 images.clear()
                 images.addAll(newList)
             }
@@ -143,13 +142,13 @@ fun ScreenshotHeader() {
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FileTreeManager.paths.forEach { folder ->
+            FileManager.paths.forEach { folder ->
                 val isRoot = folder.depth == 0
                 CustomChip(
                     label = if (isRoot) "" else folder.file.name,
                     icon = if (isRoot) "folder" else null,
                     onClick = {
-                        if (FileTreeManager.navigate(folder)) refreshImages(false)
+                        if (FileManager.navigate(folder)) refreshImages()
                     }
                 )
                 var expanded by remember { mutableStateOf(false) }
@@ -171,40 +170,10 @@ fun ScreenshotHeader() {
                             onDismissRequest = { expanded = false },
                             properties = PopupProperties(focusable = true),
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .background(LocalTheme.current.chipBackground.copy(alpha = 0.75f), LocalTheme.current.sideBarNavigationEntryShape)
-                                    .border(1.dp, LocalTheme.current.borderColor, LocalTheme.current.sideBarNavigationEntryShape)
-                            ) {
-                                Column(
-                                    modifier = Modifier.width(IntrinsicSize.Max)
-                                ) {
-                                    folder.subFolders.forEach { folder ->
-                                        Box {
-                                            val interactionSource = rememberInteractionSource()
-                                            val isHovered by interactionSource.collectIsHoveredAsState()
-                                            val borderColor = if (isHovered) LocalTheme.current.borderColor else Color.Transparent
-                                            val backgroundColor = if (isHovered) LocalTheme.current.chipBackground.copy(alpha = 1f) else Color.Transparent
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(backgroundColor, LocalTheme.current.sideBarNavigationEntryShape)
-                                                    .border(1.dp, borderColor, LocalTheme.current.sideBarNavigationEntryShape)
-                                                    .onClick(interactionSource) {
-                                                        expanded = false
-                                                        if (FileTreeManager.navigate(folder)) refreshImages(false)
-                                                    }
-                                            ) {
-                                                Text(
-                                                    folder.file.name,
-                                                    color = LocalTheme.current.textColor,
-                                                    modifier = Modifier.padding(10.dp, 10.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            DropDownMenu(folder.subFolders, { _, folderNode ->
+                                expanded = false
+                                if (FileManager.navigate(folderNode)) refreshImages()
+                            }, { it.file.name })
                         }
                     }
                 }
@@ -213,21 +182,50 @@ fun ScreenshotHeader() {
     }
 }
 
+var sortingMethods = arrayListOf("File Name", "Last-Modified Date")
+
+@Composable
+fun FilterDropDown() {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        CustomChip(
+            label = "Sort by: ${sortingMethods[FileManager.sortingMethod]}",
+            onClick = {
+                expanded = !expanded
+            }
+        )
+        if (expanded) {
+            Popup(
+                alignment = Alignment.TopCenter,
+                offset = IntOffset(0, 32),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                DropDownMenu(sortingMethods, { index, _ ->
+                    expanded = false
+                    FileManager.sort(index)
+                    refreshImages()
+                }, { it })
+            }
+        }
+    }
+}
+
 fun pageBack() {
-    if (FileTreeManager.back()) refreshImages(false)
+    if (FileManager.back()) refreshImages()
 }
 
 fun pageForward() {
-    if (FileTreeManager.forward()) refreshImages(false)
+    if (FileManager.forward()) refreshImages()
 }
 
 @Composable
 fun Screenshots() {
     LaunchedEffect(Unit) {
-        FileTreeManager.refresh()
-        FileTreeManager.clearHistory()
+        FileManager.refresh()
+        FileManager.clearHistory()
         currentIndex = -1
-        refreshImages(false)
+        refreshImages()
     }
     val interactionSource = rememberInteractionSource()
     var start by remember { mutableStateOf(Offset.Zero) }
@@ -242,20 +240,20 @@ fun Screenshots() {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val pathSize = FileTreeManager.paths.size
+            val pathSize = FileManager.paths.size
             if (pathSize > 1) Chip(
                 icon = "left-arrow",
                 iconModifier = Modifier.rotate(90f),
                 onClick = {
-                    if (FileTreeManager.navigate(FileTreeManager.paths[pathSize - 2])) refreshImages(false)
+                    if (FileManager.navigate(FileManager.paths[pathSize - 2])) refreshImages()
                 }
             )
-            FileTreeManager.currentFolder?.subFolders?.forEach { folder ->
+            FileManager.currentFolder?.subFolders?.forEach { folder ->
                 Chip(
                     label = folder.file.name,
                     icon = "folder",
                     onClick = {
-                        if (FileTreeManager.navigate(folder)) refreshImages(false)
+                        if (FileManager.navigate(folder)) refreshImages()
                     }
                 )
             }
@@ -286,8 +284,8 @@ fun Screenshots() {
                         }
                     }
                     Key.F5 -> {
-                        FileTreeManager.refresh()
-                        refreshImages(false)
+                        FileManager.refresh()
+                        refreshImages()
                     }
                 }
                 false
@@ -393,14 +391,15 @@ fun ImageComponent(image: ImageData, index: Int) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .background(LocalTheme.current.modCardBackground)
+                .aspectRatio(16f / 9f),
+            contentAlignment = Alignment.Center
         ) {
             Image(
                 bitmap = image.thumbnail,
                 contentDescription = null,
                 modifier = Modifier
-                    .fillMaxSize(),
+                    .wrapContentSize()
+                    .clip(LocalTheme.current.sideBarNavigationEntryShape),
                 contentScale = ContentScale.Fit,
             )
             if (isHovered) ImageButton(image)

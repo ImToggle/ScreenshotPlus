@@ -9,13 +9,15 @@ import me.imtoggle.screenshotplus.config.ModConfig
 import java.io.File
 import java.nio.file.Files
 
-class ImageNode(val file: File) {
+open class FileNode(val file: File)
+
+class ImageNode(file: File) : FileNode(file) {
     override fun toString(): String {
         return "ImageNode(path='${file.absolutePath}')"
     }
 }
 
-open class FolderNode(val file: File, val depth: Int) {
+class FolderNode(file: File, val depth: Int) : FileNode(file) {
     var subFolders = arrayListOf<FolderNode>()
     var images = arrayListOf<ImageNode>()
 
@@ -24,24 +26,28 @@ open class FolderNode(val file: File, val depth: Int) {
     }
 }
 
-object FileTreeManager {
+object FileManager {
     var root = File(ModConfig.screenShotRootFolder)
         set(value) {
             field = value
             currentFolder = null
-            tree = FolderNode(value, 0).apply {
-                navigate(this)
-            }
+            navigate(FolderNode(value, 0))
         }
-
-    var tree: FolderNode? = null
 
     var currentFolder: FolderNode? by mutableStateOf(null)
 
     val paths = mutableStateListOf<FolderNode>()
 
+    var sortingMethod by mutableStateOf(0)
+
     private val backStack = ArrayDeque<FolderNode>()
     private val forwardStack = ArrayDeque<FolderNode>()
+
+    val nodeComparator
+        get() = when (sortingMethod) {
+        0 -> compareBy<FileNode> { it.file.name }
+        else -> compareBy<FileNode> { it.file.lastModified() }
+    }
 
     fun FolderNode.resolve() {
         images.clear()
@@ -53,18 +59,23 @@ object FileTreeManager {
                 subFolders.add(FolderNode(file, depth + 1))
             }
         }
+        images.sortWith(nodeComparator)
     }
 
-    fun FolderNode.cleanup(force: Boolean = false) {
+    fun FolderNode.cleanup() {
         subFolders.fastForEach {
-            it.cleanup(force)
+            it.cleanup()
         }
-        if (!paths.contains(this) || force) {
-            images.clear()
-            images.trimToSize()
-            subFolders.clear()
-            subFolders.trimToSize()
+        images.clear()
+        images.trimToSize()
+    }
+
+    fun FolderNode.sort() {
+        subFolders.fastForEach {
+            it.sort()
         }
+        images.sortWith(nodeComparator)
+        subFolders.sortWith(nodeComparator)
     }
 
     fun clearHistory() {
@@ -94,17 +105,29 @@ object FileTreeManager {
 
     fun setFolder(folder: FolderNode): Boolean {
         if (folder == currentFolder) return false
+        currentFolder?.let {
+            it.images.clear()
+            it.images.trimToSize()
+        }
         currentFolder = folder
-        while (paths.size > folder.depth) {
+        while (paths.size > folder.depth + 1) {
+            paths.last().let {
+                it.subFolders.clear()
+                it.subFolders.trimToSize()
+            }
             paths.removeLast()
         }
-        tree?.cleanup()
         paths.add(folder)
         folder.resolve()
         return true
     }
 
     fun refresh() {
+        currentFolder?.resolve()
+    }
+
+    fun sort(method: Int) {
+        sortingMethod = method
         currentFolder?.resolve()
     }
 
