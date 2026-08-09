@@ -4,6 +4,7 @@
   "compatibilityLevel": "${java}",
   "refmap": "screenshotplus.refmap.json",
   "mixins": [
+    "HeaderMixin",
     "NavigationMixin",
     "NavigationRouteMixin",
     "RoutesMixin"

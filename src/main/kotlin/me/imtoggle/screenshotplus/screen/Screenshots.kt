@@ -1,18 +1,22 @@
 package me.imtoggle.screenshotplus.screen
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -27,6 +31,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.util.fastForEach
@@ -37,7 +43,6 @@ import me.imtoggle.screenshotplus.util.MultiFiles
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.Surface
 import org.polyfrost.compose.render.ImageLoader
-import org.polyfrost.oneconfig.internal.ui.components.Chip
 import org.polyfrost.oneconfig.internal.ui.components.Icon
 import org.polyfrost.oneconfig.internal.ui.components.Text
 import org.polyfrost.oneconfig.internal.ui.components.onClick
@@ -76,7 +81,7 @@ private var isCtrl = false
 
 private var isShift = false
 
-var currentPath = mutableListOf(ModConfig.screenShotRootFolder)
+var currentPath by mutableStateOf(mutableListOf(ModConfig.screenShotRootFolder))
 
 fun getPath() = File(currentPath.joinToString("/"))
 
@@ -124,6 +129,7 @@ fun refreshImages(together: Boolean = false) {
                 }
             }
         }
+        folders.sort()
         if (together) {
             mc.execute {
                 if (folder.absolutePath != getPath().absolutePath) return@execute
@@ -140,6 +146,103 @@ fun makeRect(start: Offset, offset: Offset): Rect {
 }
 
 @Composable
+fun ScreenshotHeader() {
+    Box(
+        modifier = Modifier
+            .height(32.dp)
+            .border(1.dp, LocalTheme.current.borderColor, LocalTheme.current.sideBarNavigationEntryShape),
+    ) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            currentPath.forEachIndexed { index, name ->
+                if (index == 0) {
+                    CustomChip(
+                        icon = "folder",
+                        onClick = {
+                            currentPath = mutableListOf(ModConfig.screenShotRootFolder)
+                            selected.clear()
+                            lastSelected = 0
+                            refreshImages(false)
+                        }
+                    )
+                } else {
+                    CustomChip(
+                        label = name,
+                        onClick = {
+                            currentPath = currentPath.subList(0, index)
+                            currentPath += name
+                            selected.clear()
+                            lastSelected = 0
+                            refreshImages(false)
+                        }
+                    )
+                }
+
+                var expanded by remember { mutableStateOf(false) }
+                val rotation by animateFloatAsState(
+                    if (expanded) 180f else 90f
+                )
+                Box {
+                    CustomChip(
+                        icon = "up",
+                        modifier = Modifier.rotate(rotation),
+                        onClick = {
+                            expanded = !expanded
+                        }
+                    )
+                    if (expanded) {
+                        Popup(
+                            alignment = Alignment.TopCenter,
+                            offset = IntOffset(0, 32),
+                            onDismissRequest = { expanded = false },
+                            properties = PopupProperties(focusable = true),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .background(LocalTheme.current.chipBackground, LocalTheme.current.sideBarNavigationEntryShape)
+                                    .border(1.dp, LocalTheme.current.borderColor, LocalTheme.current.sideBarNavigationEntryShape)
+                            ) {
+                                Column(
+                                    modifier = Modifier.width(IntrinsicSize.Max)
+                                ) {
+                                    folders.forEach { folder ->
+                                        Box {
+                                            val interactionSource = rememberInteractionSource()
+                                            val isHovered by interactionSource.collectIsHoveredAsState()
+                                            val backgroundColor = if (isHovered) LocalTheme.current.chipBackground.copy(alpha = 1f) else Color.Transparent
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(backgroundColor, LocalTheme.current.sideBarNavigationEntryShape)
+                                                    .onClick(interactionSource) {
+                                                        expanded = false
+                                                        currentPath += folder
+                                                        selected.clear()
+                                                        lastSelected = 0
+                                                        refreshImages(false)
+                                                    }
+                                            ) {
+                                                Text(
+                                                    folder,
+                                                    color = LocalTheme.current.textColor,
+                                                    modifier = Modifier.padding(10.dp, 10.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun Screenshots() {
     LaunchedEffect(Unit) {
         currentIndex = -1
@@ -152,80 +255,33 @@ fun Screenshots() {
     var offset by remember { mutableStateOf(Offset.Zero) }
     val density = LocalDensity.current.density
     var dragRect by remember { mutableStateOf(makeRect(start, offset)) }
-
     Column(
-        verticalArrangement = Arrangement.spacedBy(19.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            rememberScrollState()
-            currentPath.forEachIndexed { index, name ->
-                if (index == 0) {
-                    Chip(
-                        label = "...",
-                        selected = true,
-                        icon = "folder",
-                        onClick = {
-                            currentPath = mutableListOf(ModConfig.screenShotRootFolder)
-                            selected.clear()
-                            lastSelected = 0
-                            refreshImages(false)
-                        }
-                    )
-                } else {
-                    Chip(
-                        label = name,
-                        selected = true,
-                        icon = "folder",
-                        onClick = {
-                            currentPath = currentPath.subList(0, index)
-                            currentPath += name
-                            selected.clear()
-                            lastSelected = 0
-                            refreshImages(false)
-                        }
-                    )
-                }
-            }
-            folders.forEach {
-                Chip(
-                    label = it,
-                    selected = false,
-                    icon = "folder",
-                    onClick = {
-                        currentPath += it
-                        selected.clear()
-                        lastSelected = 0
-                        refreshImages(false)
-                    }
-                )
-            }
-//            Chip(
-//                label = "",
-//                selected = false,
-//                icon = "plus",
-//                onClick = {
-//
-//                }
-//            )
-        }
+//        LazyVerticalGrid(
+//            columns = GridCells.Fixed(8),
+//            horizontalArrangement = Arrangement.spacedBy(8.dp),
+//            verticalArrangement = Arrangement.spacedBy(8.dp),
+//            modifier = Modifier.fillMaxWidth()
+//        ) {
+//            items(folders) { folder ->
+//                Chip(
+//                    label = folder,
+//                    icon = "folder",
+//                    onClick = {
+//                        currentPath = (currentPath + folder).toMutableList()
+//                        selected.clear()
+//                        lastSelected = 0
+//                        refreshImages(false)
+//                    }
+//                )
+//            }
+//        }
         Box(modifier = Modifier
             .weight(1f)
             .onClick(interactionSource) {
                 selected.clear()
             }
-//            .pointerInput(Unit) {
-//                awaitPointerEventScope {
-//                    while (true) {
-//                        val event = awaitPointerEvent(PointerEventPass.Main)
-//                        if (event.buttons.isSecondaryPressed) {
-//                            println("Right click detected!")
-//                        }
-//                    }
-//                }
-//            }
             .onKeyEvent { keyEvent ->
                 isCtrl = keyEvent.isCtrlPressed
                 isShift = keyEvent.isShiftPressed
@@ -279,8 +335,8 @@ fun Screenshots() {
                 LazyVerticalGrid(
                     state = gridState,
                     columns = GridCells.Fixed(4),
-                    verticalArrangement = Arrangement.spacedBy(19.dp),
-                    horizontalArrangement = Arrangement.spacedBy(19.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(18.dp),
                     modifier = Modifier.padding(end = 8.dp)
                 ) {
                     bounds.clear()
@@ -369,7 +425,8 @@ fun ImageComponent(image: ImageData, index: Int) {
             Text(
                 images[index].file.name,
                 color = LocalTheme.current.textColor,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                modifier = Modifier.padding(horizontal = 4.dp),
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -442,6 +499,7 @@ fun ImageView(image: ImageData) {
                 Key.DirectionLeft -> {
                     currentIndex = (currentIndex - 1).coerceIn(images.indices)
                 }
+
                 Key.DirectionRight -> {
                     currentIndex = (currentIndex + 1).coerceIn(images.indices)
                 }
