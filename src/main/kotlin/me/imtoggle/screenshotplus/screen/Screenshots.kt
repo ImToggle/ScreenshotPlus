@@ -1,5 +1,6 @@
 package me.imtoggle.screenshotplus.screen
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -38,7 +39,7 @@ import androidx.compose.ui.unit.round
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import me.imtoggle.screenshotplus.config.ModConfig
+import me.imtoggle.screenshotplus.tree.FileTreeManager
 import me.imtoggle.screenshotplus.util.MultiFiles
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.Surface
@@ -56,7 +57,6 @@ import org.polyfrost.oneconfig.utils.v1.dsl.mc
 import org.polyfrost.oneconfig.utils.v1.dsl.runAsync
 import org.polyfrost.oneconfig.utils.v1.dsl.schedule
 import java.io.File
-import java.nio.file.Files
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.Duration.Companion.milliseconds
@@ -73,23 +73,17 @@ private val dragSelected = mutableStateListOf<Int>()
 
 private var currentIndex by mutableStateOf(-1)
 
-private var folders = mutableStateListOf<String>()
-
 private var lastSelected = 0
 
 private var isCtrl = false
 
 private var isShift = false
 
-var currentPath by mutableStateOf(mutableListOf(ModConfig.screenShotRootFolder))
-
-fun getPath() = File(currentPath.joinToString("/"))
-
 fun getSelected(image: ImageData) = selected.apply { if (!contains(image)) add(image) }
 
 fun processThumbnail(image: Image): ImageBitmap? {
-    if (image.width <= 480 && image.height <= 480) return null
-    val size = 480 / max(image.width, image.height).toFloat()
+    if (image.width <= 360 && image.height <= 360) return null
+    val size = 360 / max(image.width, image.height).toFloat()
     val width = (image.width * size).toInt()
     val height = (image.height * size).toInt()
     Surface.makeRasterN32Premul(width, height).use { surface ->
@@ -101,38 +95,31 @@ fun processThumbnail(image: Image): ImageBitmap? {
 }
 
 fun refreshImages(together: Boolean = false) {
+    selected.clear()
+    lastSelected = 0
     val newList = mutableListOf<ImageData>()
     if (!together) images.clear()
-    folders.clear()
     runAsync {
-        val folder = getPath()
-        if (!folder.exists()) return@runAsync
-        folder.listFiles()?.let { listFiles ->
-            listFiles.sortBy { it.lastModified() }
-            listFiles.forEach { file ->
-                if (file.isFile && Files.probeContentType(file.toPath()).startsWith("image/")) {
-                    val image = ImageLoader.fromFile(file.absolutePath) ?: return@runAsync
-                    val bitMap = image.toComposeImageBitmap()
-                    val thumbnail = processThumbnail(image) ?: bitMap
-                    mc.execute {
-                        if (folder.absolutePath != getPath().absolutePath) return@execute
-                        ImageData(thumbnail, bitMap, file).let {
-                            if (together) {
-                                newList += it
-                            } else {
-                                images += it
-                            }
-                        }
+        val currentFolder = FileTreeManager.currentFolder ?: return@runAsync
+        val folderPath = currentFolder.file.absolutePath
+        FileTreeManager.currentFolder?.images?.forEach { imageNode ->
+            val image = ImageLoader.fromFile(imageNode.file.absolutePath) ?: return@runAsync
+            val bitMap = image.toComposeImageBitmap()
+            val thumbnail = processThumbnail(image) ?: bitMap
+            mc.execute {
+                if (folderPath != FileTreeManager.currentFolder?.file?.absolutePath) return@execute
+                ImageData(thumbnail, bitMap, imageNode.file).let {
+                    if (together) {
+                        newList += it
+                    } else {
+                        images += it
                     }
-                } else if (file.isDirectory) {
-                    if (folder.absolutePath == getPath().absolutePath) folders.add(file.name)
                 }
             }
         }
-        folders.sort()
         if (together) {
             mc.execute {
-                if (folder.absolutePath != getPath().absolutePath) return@execute
+                if (folderPath != FileTreeManager.currentFolder?.file?.absolutePath) return@execute
                 images.clear()
                 images.addAll(newList)
             }
@@ -156,35 +143,20 @@ fun ScreenshotHeader() {
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            currentPath.forEachIndexed { index, name ->
-                if (index == 0) {
-                    CustomChip(
-                        icon = "folder",
-                        onClick = {
-                            currentPath = mutableListOf(ModConfig.screenShotRootFolder)
-                            selected.clear()
-                            lastSelected = 0
-                            refreshImages(false)
-                        }
-                    )
-                } else {
-                    CustomChip(
-                        label = name,
-                        onClick = {
-                            currentPath = currentPath.subList(0, index)
-                            currentPath += name
-                            selected.clear()
-                            lastSelected = 0
-                            refreshImages(false)
-                        }
-                    )
-                }
-
+            FileTreeManager.paths.forEach { folder ->
+                val isRoot = folder.depth == 0
+                CustomChip(
+                    label = if (isRoot) "" else folder.file.name,
+                    icon = if (isRoot) "folder" else null,
+                    onClick = {
+                        if (FileTreeManager.navigate(folder)) refreshImages(false)
+                    }
+                )
                 var expanded by remember { mutableStateOf(false) }
                 val rotation by animateFloatAsState(
                     if (expanded) 180f else 90f
                 )
-                Box {
+                if (folder.subFolders.isNotEmpty()) Box {
                     CustomChip(
                         icon = "up",
                         modifier = Modifier.rotate(rotation),
@@ -201,31 +173,30 @@ fun ScreenshotHeader() {
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .background(LocalTheme.current.chipBackground, LocalTheme.current.sideBarNavigationEntryShape)
+                                    .background(LocalTheme.current.chipBackground.copy(alpha = 0.75f), LocalTheme.current.sideBarNavigationEntryShape)
                                     .border(1.dp, LocalTheme.current.borderColor, LocalTheme.current.sideBarNavigationEntryShape)
                             ) {
                                 Column(
                                     modifier = Modifier.width(IntrinsicSize.Max)
                                 ) {
-                                    folders.forEach { folder ->
+                                    folder.subFolders.forEach { folder ->
                                         Box {
                                             val interactionSource = rememberInteractionSource()
                                             val isHovered by interactionSource.collectIsHoveredAsState()
+                                            val borderColor = if (isHovered) LocalTheme.current.borderColor else Color.Transparent
                                             val backgroundColor = if (isHovered) LocalTheme.current.chipBackground.copy(alpha = 1f) else Color.Transparent
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .background(backgroundColor, LocalTheme.current.sideBarNavigationEntryShape)
+                                                    .border(1.dp, borderColor, LocalTheme.current.sideBarNavigationEntryShape)
                                                     .onClick(interactionSource) {
                                                         expanded = false
-                                                        currentPath += folder
-                                                        selected.clear()
-                                                        lastSelected = 0
-                                                        refreshImages(false)
+                                                        if (FileTreeManager.navigate(folder)) refreshImages(false)
                                                     }
                                             ) {
                                                 Text(
-                                                    folder,
+                                                    folder.file.name,
                                                     color = LocalTheme.current.textColor,
                                                     modifier = Modifier.padding(10.dp, 10.dp)
                                                 )
@@ -242,12 +213,20 @@ fun ScreenshotHeader() {
     }
 }
 
+fun pageBack() {
+    if (FileTreeManager.back()) refreshImages(false)
+}
+
+fun pageForward() {
+    if (FileTreeManager.forward()) refreshImages(false)
+}
+
 @Composable
 fun Screenshots() {
     LaunchedEffect(Unit) {
+        FileTreeManager.refresh()
+        FileTreeManager.clearHistory()
         currentIndex = -1
-        lastSelected = 0
-        selected.clear()
         refreshImages(false)
     }
     val interactionSource = rememberInteractionSource()
@@ -258,25 +237,29 @@ fun Screenshots() {
     Column(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-//        LazyVerticalGrid(
-//            columns = GridCells.Fixed(8),
-//            horizontalArrangement = Arrangement.spacedBy(8.dp),
-//            verticalArrangement = Arrangement.spacedBy(8.dp),
-//            modifier = Modifier.fillMaxWidth()
-//        ) {
-//            items(folders) { folder ->
-//                Chip(
-//                    label = folder,
-//                    icon = "folder",
-//                    onClick = {
-//                        currentPath = (currentPath + folder).toMutableList()
-//                        selected.clear()
-//                        lastSelected = 0
-//                        refreshImages(false)
-//                    }
-//                )
-//            }
-//        }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val pathSize = FileTreeManager.paths.size
+            if (pathSize > 1) Chip(
+                icon = "left-arrow",
+                iconModifier = Modifier.rotate(90f),
+                onClick = {
+                    if (FileTreeManager.navigate(FileTreeManager.paths[pathSize - 2])) refreshImages(false)
+                }
+            )
+            FileTreeManager.currentFolder?.subFolders?.forEach { folder ->
+                Chip(
+                    label = folder.file.name,
+                    icon = "folder",
+                    onClick = {
+                        if (FileTreeManager.navigate(folder)) refreshImages(false)
+                    }
+                )
+            }
+        }
         Box(modifier = Modifier
             .weight(1f)
             .onClick(interactionSource) {
@@ -301,6 +284,10 @@ fun Screenshots() {
                             selected.fastForEach { it.file.delete() }
                             refreshImages(true)
                         }
+                    }
+                    Key.F5 -> {
+                        FileTreeManager.refresh()
+                        refreshImages(false)
                     }
                 }
                 false

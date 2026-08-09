@@ -5,6 +5,7 @@ package me.imtoggle.screenshotplus.util
 import androidx.compose.ui.util.fastForEach
 import com.mojang.blaze3d.platform.NativeImage
 import me.imtoggle.screenshotplus.config.ModConfig
+import me.imtoggle.screenshotplus.tree.FileTreeManager
 import org.polyfrost.oneconfig.utils.v1.ClipboardHelper
 import org.polyfrost.oneconfig.utils.v1.dsl.mc
 import org.polyfrost.oneconfig.utils.v1.dsl.runAsync
@@ -18,8 +19,6 @@ private val DATE = 1
 private val WORLD = 2
 
 var dateTimeFormatter = DateTimeFormatter.ofPattern(ModConfig.dateFormat, Locale.getDefault())
-
-var rootFolder = File(ModConfig.screenShotRootFolder)
 
 val capturing
     get() = tasks.isNotEmpty()
@@ -113,9 +112,11 @@ fun getWorldName(): String {
 }
 
 fun getFolder(): File {
-    return when (ModConfig.organizeRule) {
-        DATE -> rootFolder.resolve("${dateTimeFormatter.format(LocalDateTime.now())}")
-        WORLD -> rootFolder.resolve(getWorldName())
-        else -> rootFolder
+    return with(FileTreeManager.root) {
+        when (ModConfig.organizeRule) {
+            DATE -> resolve("${dateTimeFormatter.format(LocalDateTime.now())}")
+            WORLD -> resolve(getWorldName())
+            else -> this
+        }
     }
 }

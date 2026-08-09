@@ -67,8 +67,9 @@ fun CustomChip(
 
 @Composable
 fun Chip(
-    label: String,
+    label: String = "",
     icon: String? = null,
+    iconModifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val interactionSource = rememberInteractionSource()
@@ -86,8 +87,10 @@ fun Chip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            icon?.let { Icon(it, color = LocalTheme.current.textColor) }
-            Text(label, fontSize = 14.sp, color = LocalTheme.current.textColor, overflow = TextOverflow.Ellipsis)
+            icon?.let { Icon(it, color = LocalTheme.current.textColor, modifier = iconModifier) }
+            if (label.isNotEmpty()) {
+                Text(label, fontSize = 14.sp, color = LocalTheme.current.textColor, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }

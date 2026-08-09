@@ -5,6 +5,7 @@
   "refmap": "screenshotplus.refmap.json",
   "mixins": [
     "HeaderMixin",
+    "NavControllerWrapperMixin",
     "NavigationMixin",
     "NavigationRouteMixin",
     "RoutesMixin"

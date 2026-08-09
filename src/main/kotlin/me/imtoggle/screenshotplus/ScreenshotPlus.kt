@@ -3,8 +3,8 @@ package me.imtoggle.screenshotplus
 import me.imtoggle.screenshotplus.config.ModConfig
 import me.imtoggle.screenshotplus.config.ModConfig.dateFormat
 import me.imtoggle.screenshotplus.config.ModConfig.screenShotRootFolder
+import me.imtoggle.screenshotplus.tree.FileTreeManager
 import me.imtoggle.screenshotplus.util.dateTimeFormatter
-import me.imtoggle.screenshotplus.util.rootFolder
 import net.fabricmc.api.ClientModInitializer
 import java.io.File
 import java.time.format.DateTimeFormatter
@@ -15,7 +15,7 @@ class ScreenshotPlus : ClientModInitializer {
     override fun onInitializeClient() {
         System.setProperty("java.awt.headless", "false")
         ModConfig.preload()
-        rootFolder = File(screenShotRootFolder)
+        FileTreeManager.root = File(screenShotRootFolder)
         dateTimeFormatter = DateTimeFormatter.ofPattern(dateFormat, Locale.getDefault())
     }
 }
